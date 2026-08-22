@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NimbusCart</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    h1 { margin-bottom: 8px; }
+    form { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 10px; margin: 20px 0; }
+    input, button { padding: 10px; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+    th { background: #f4f4f4; }
+    #message { margin: 12px 0; min-height: 20px; }
+    .error { color: #b00020; }
+    .success { color: #176b2c; }
+    .empty { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>NimbusCart</h1>
+  <p>Products stored in the application database.</p>
+
+  <h2>Add Product</h2>
+  <form id="product-form">
+    <input id="name" type="text" placeholder="Product name" required>
+    <input id="price" type="number" min="0" step="0.01" placeholder="Price" required>
+    <input id="stock" type="number" min="0" step="1" placeholder="Stock" required>
+    <button type="submit">Add Product</button>
+  </form>
+
+  <div id="message" aria-live="polite"></div>
+
+  <h2>Products</h2>
+  <div id="empty-state" class="empty" hidden>No products found.</div>
+  <table id="products-table">
+    <thead>
+      <tr><th>Product ID</th><th>Product Name</th><th>Price</th><th>Stock</th></tr>
+    </thead>
+    <tbody id="products-body"></tbody>
+  </table>
+
+  <script>
+    const message = document.getElementById('message');
+    const body = document.getElementById('products-body');
+    const emptyState = document.getElementById('empty-state');
+    const form = document.getElementById('product-form');
+
+    function showMessage(text, type = '') {
+      message.textContent = text;
+      message.className = type;
+    }
+
+    const LOCAL_API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const API_URL = LOCAL_API ? 'http://localhost:5000/items' : '/api/items';
+
+    async function loadProducts() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`API returned HTTP ${response.status}`);
+        const products = await response.json();
+        body.innerHTML = '';
+        emptyState.hidden = products.length !== 0;
+
+        for (const product of products) {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${product.id}</td>
+            <td>${escapeHtml(product.name)}</td>
+            <td>${Number(product.price).toFixed(2)}</td>
+            <td>${product.stock}</td>`;
+          body.appendChild(row);
+        }
+      } catch (error) {
+        emptyState.hidden = true;
+        showMessage(`Could not load products: ${error.message}`, 'error');
+      }
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value;
+      return div.innerHTML;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      showMessage('Adding product...');
+
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        price: Number(document.getElementById('price').value),
+        stock: Number(document.getElementById('stock').value)
+      };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `API returned HTTP ${response.status}`);
+        form.reset();
+        showMessage('Product added successfully.', 'success');
+        await loadProducts();
+      } catch (error) {
+        showMessage(`Could not add product: ${error.message}`, 'error');
+      }
+    });
+
+    loadProducts();
+  </script>
+</body>
+</html>

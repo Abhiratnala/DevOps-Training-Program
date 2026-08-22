@@ -1,0 +1,9 @@
+aws_region      = "ap-south-1"
+project_name    = "nimbuscart"
+environment     = "dev"
+key_pair_name   = "project-key-pair"
+private_key_path = "/home/abhignya/Downloads/project-key-pair.pem"
+admin_cidr      = "223.231.218.134/32"
+
+db_username = "nimbusadmin"
+db_password = "REPLACE_WITH_A_STRONG_PASSWORD"
